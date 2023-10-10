@@ -21,7 +21,7 @@ var (
 	filterSuffix        string
 	filterContains      string
 	filterTitleContains string
-	selectExtension     string
+	selectFormat        string
 	outputFilename      string
 )
 
@@ -31,29 +31,28 @@ var (
 )
 
 func init() {
-	flag.StringVar(&baseDir, "dir", "", "an absolute path of directory to scan music")
-	flag.StringVar(&selectExtension, "ext", "", fmt.Sprintf("select format for scanning music, supported extensions are %s", strings.Join(supportedExtension, ", ")))
-	flag.StringVar(&filterPrefix, "filter-prefix", "", "a filter for prefixes of music filename")
-	flag.StringVar(&filterSuffix, "filter-suffix", "", "a filter for suffixes of music filename, be warned this filter includes file extension")
-	flag.StringVar(&filterContains, "filter-contains", "", "a filter for music filename containing partial string")
-	flag.StringVar(&filterTitleContains, "filter-title-contains", "", "a filter for music title containing partial string, some music file doesn't present title tag, use filename")
-	flag.StringVar(&outputFilename, "o", "", "output filename, the output file will be put into the scanning directory")
+	flag.StringVar(&baseDir, "dir", "", "待扫描音乐文件的目录，要用绝对路径")
+	flag.StringVar(&selectFormat, "format", "", fmt.Sprintf("筛选特定格式的音乐文件，受支持的格式有：%s", strings.Join(supportedExtension, ", ")))
+	flag.StringVar(&filterPrefix, "filter-prefix", "", "音乐文件的文件名的前缀过滤器")
+	flag.StringVar(&filterSuffix, "filter-suffix", "", "音乐文件的文件名的后缀过滤器，请注意后缀过滤器会筛选包含文件名扩展名的内容")
+	flag.StringVar(&filterContains, "filter-contains", "", "音乐文件的文件名的部分匹配过滤器")
+	flag.StringVar(&filterTitleContains, "filter-title-contains", "", "音乐标题的部分匹配过滤器，这个过滤器会查询音乐文件的 Title Tag，如果音乐文件缺少 Title Tag 则会使用文件名来筛选")
+	flag.StringVar(&outputFilename, "o", "", "播放列表输出文件的文件名，默认文件名是 playlist.m3u8，输入的内容如果缺少 .m3u8 则会自动补充")
 
 	flag.Usage = func() {
 		w := flag.CommandLine.Output()
 
-		_, _ = fmt.Fprintf(w, `A generator of Sony Walkman .m3u8 music playlist.
+		_, _ = fmt.Fprintf(w, `这是一个用来生成 Sony Walkman 的音乐播放列表的工具。
 Version: %s
 
-Flags:
+参数说明:
 `, buildVersion)
 
 		flag.PrintDefaults()
 
 		_, _ = fmt.Fprintf(w, `
-Attention:
-You can only use one of these four filters: -filter-prefix, -filter-suffix, -filter-contains, and -filter-title-contains.
-They conflict with each other, and we don't currently support the use of mixed filters.
+注意:
+虽然我们提供了这四种过滤器【-filter-prefix】、【-filter-suffix】、【-filter-contains】和【-filter-title-contains】但是它们之间相互冲突，并且目前我暂时不打算支持混合过滤器。
 
 `)
 	}
@@ -75,7 +74,7 @@ They conflict with each other, and we don't currently support the use of mixed f
 func main() {
 	res := walkBaseDir()
 	if len(res) == 0 {
-		fmt.Println("no music files found after filtering, exit")
+		fmt.Println("筛选结束后没有可用的音乐文件，结束")
 		os.Exit(1)
 	}
 
@@ -94,7 +93,7 @@ func main() {
 	if err := os.WriteFile(outputPath, []byte(m3u8ContentBuilder.String()), os.ModePerm); err != nil {
 		panic(err)
 	}
-	fmt.Printf("done, %s has been generated\n", outputPath)
+	fmt.Printf("完成，播放列表生成在 %s\n", outputPath)
 }
 
 type WalkResult struct {
@@ -106,7 +105,7 @@ type WalkResult struct {
 func validateParams() {
 	if baseDir == "" {
 		flag.Usage()
-		panic("missing base dir")
+		panic("缺少待扫描文件夹路径")
 	}
 
 	filterCount := 0
@@ -123,7 +122,7 @@ func validateParams() {
 		filterCount++
 	}
 	if filterCount > 1 {
-		panic("You can only use one of these parameters: -filter-prefix, -filter-suffix, -filter-contains, and -filter-title-contains. You can't use two or more filtering parameters simultaneously.")
+		panic("你只能使用以下参数之一：-filter-prefix、-filter-suffix、-filter-contains 和 -filter-title-contains。不能同时使用两个以上的过滤参数。")
 	}
 }
 
@@ -138,9 +137,6 @@ func walkBaseDir() (res []*WalkResult) {
 		if info.IsDir() {
 			return nil
 		}
-
-		extension := strings.ToLower(filepath.Ext(info.Name()))
-		extensionWithoutDot := strings.TrimPrefix(extension, ".")
 
 		// filter by prefix
 		if filterPrefix != "" && !strings.HasPrefix(info.Name(), filterPrefix) {
@@ -157,18 +153,20 @@ func walkBaseDir() (res []*WalkResult) {
 			return nil
 		}
 
-		// filter supported extensions, or select extension
-		if selectExtension != "" && extensionWithoutDot != strings.ToLower(selectExtension) {
-			return nil
-		} else if !slices.Contains(supportedExtension, extensionWithoutDot) {
-			return nil
-		}
-
 		// probe info
 		data, err0 := ffprobe.ProbeURL(context.Background(), path)
 		if err0 != nil {
-			panic(err0)
+			return nil // unsupported file
 		}
+
+		// filter supported extensions, or select extension
+		formatName := strings.ToLower(data.Format.FormatName)
+		if selectFormat != "" && formatName != strings.ToLower(selectFormat) {
+			return nil
+		} else if !slices.Contains(supportedExtension, formatName) {
+			return nil
+		}
+
 		title, _ := data.Format.TagList.GetString("TITLE")
 		if title == "" {
 			title = strings.TrimSuffix(info.Name(), filepath.Ext(info.Name()))
