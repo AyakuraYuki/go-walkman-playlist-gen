@@ -4,6 +4,12 @@ Sony Walkman 播放列表生成工具。
 
 目前这个工具只支持 flac 和 mp3，因为这两个格式的音乐文件是最有可能包含 TAG 数据的。
 
+## 下载
+
+前往 [Release](https://github.com/AyakuraYuki/go-walkman-playlist-gen/releases) 页面下载可执行文件。
+
+注意，下载项中的 `386` 版本未经测试，会有意料之外的情况，并且目前本程序不对 32 位操作系统做技术支持。建议使用 64 位操作系统。
+
 ## 使用方式
 
 ```text
