@@ -26,13 +26,13 @@ var (
 )
 
 var (
-	supportedExtension = []string{"flac", "mp3"}
-	buildVersion       string
+	supportedFormat = []string{"flac", "mp3"}
+	buildVersion    string
 )
 
 func init() {
 	flag.StringVar(&baseDir, "dir", "", "待扫描音乐文件的目录，要用绝对路径")
-	flag.StringVar(&selectFormat, "format", "", fmt.Sprintf("筛选特定格式的音乐文件，受支持的格式有：%s", strings.Join(supportedExtension, ", ")))
+	flag.StringVar(&selectFormat, "format", "", fmt.Sprintf("筛选特定格式的音乐文件，受支持的格式有：%s", strings.Join(supportedFormat, ", ")))
 	flag.StringVar(&filterPrefix, "filter-prefix", "", "音乐文件的文件名的前缀过滤器")
 	flag.StringVar(&filterSuffix, "filter-suffix", "", "音乐文件的文件名的后缀过滤器，请注意后缀过滤器会筛选包含文件名扩展名的内容")
 	flag.StringVar(&filterContains, "filter-contains", "", "音乐文件的文件名的部分匹配过滤器")
@@ -159,11 +159,11 @@ func walkBaseDir() (res []*WalkResult) {
 			return nil // unsupported file
 		}
 
-		// filter supported extensions, or select extension
+		// filter supported formats, or select format
 		formatName := strings.ToLower(data.Format.FormatName)
 		if selectFormat != "" && formatName != strings.ToLower(selectFormat) {
 			return nil
-		} else if !slices.Contains(supportedExtension, formatName) {
+		} else if !slices.Contains(supportedFormat, formatName) {
 			return nil
 		}
 
