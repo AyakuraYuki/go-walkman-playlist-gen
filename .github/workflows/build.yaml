@@ -27,7 +27,7 @@ jobs:
 
       # Test
       - name: Unit Testing
-        run: go test -v ./go-walkman-playlist-gen/
+        run: go test -v ./
 
       # Win
       - run: GOOS=windows GOARCH=386 VERSION=${RELEASE_VERSION} make release
