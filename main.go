@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 )
 
 var (
@@ -81,9 +82,8 @@ func main() {
 	m3u8ContentBuilder := strings.Builder{}
 	m3u8ContentBuilder.WriteString("#EXTM3U\n")
 	for _, v := range res {
-		copiedV := v
-		m3u8ContentBuilder.WriteString(fmt.Sprintf("#EXTINF:%d;%s\n", copiedV.DurationSeconds, copiedV.Title))
-		m3u8Path := strings.ReplaceAll(copiedV.Path, baseDir, "")
+		m3u8ContentBuilder.WriteString(fmt.Sprintf("#EXTINF:%d;%s\n", v.DurationSeconds, v.Title))
+		m3u8Path := strings.ReplaceAll(v.Path, baseDir, "")
 		m3u8Path = strings.TrimPrefix(m3u8Path, string(os.PathSeparator))
 		m3u8ContentBuilder.WriteString(fmt.Sprintf("%s\n", m3u8Path))
 	}
@@ -128,6 +128,7 @@ func validateParams() {
 
 func walkBaseDir() (res []*WalkResult) {
 	res = make([]*WalkResult, 0)
+	var lock sync.Mutex
 	err := filepath.Walk(baseDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			panic(err)
@@ -177,11 +178,14 @@ func walkBaseDir() (res []*WalkResult) {
 			return nil
 		}
 
+		lock.Lock()
 		res = append(res, &WalkResult{
 			Path:            path,
 			DurationSeconds: cast.ToInt32(math.Round(data.Format.DurationSeconds)),
 			Title:           title,
 		})
+		lock.Unlock()
+
 		return nil
 	})
 	if err != nil {

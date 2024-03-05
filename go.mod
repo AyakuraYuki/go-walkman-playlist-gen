@@ -1,6 +1,6 @@
 module github.com/AyakuraYuki/go-walkman-playlist-gen
 
-go 1.21
+go 1.22
 
 require (
 	github.com/flytam/filenamify v1.2.0
